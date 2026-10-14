@@ -1,0 +1,39 @@
+server:
+  port: ${PORT:8080}
+spring:
+  application:
+    name: gateway
+  cloud:
+    gateway:
+      server:
+        webflux:
+          routes:
+            - id: identity
+              uri: ${IDENTITY_URL:http://identity:8080}
+              predicates:
+                - Path=/api/auth/**,/api/users/**
+            - id: organization
+              uri: ${ORGANIZATION_URL:http://organization:8080}
+              predicates:
+                - Path=/api/holdings/**,/api/companies/**,/api/departments/**
+            - id: master-data
+              uri: ${MASTER_URL:http://master-data:8080}
+              predicates:
+                - Path=/api/master-data/**
+            - id: workflow
+              uri: ${WORKFLOW_URL:http://workflow:8080}
+              predicates:
+                - Path=/api/workflows/**
+            - id: notification
+              uri: ${NOTIFICATION_URL:http://notification:8080}
+              predicates:
+                - Path=/api/notifications/**
+            - id: audit
+              uri: ${AUDIT_URL:http://audit:8080}
+              predicates:
+                - Path=/api/audit/**
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

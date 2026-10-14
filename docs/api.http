@@ -1,0 +1,53 @@
+@base = http://localhost:8080
+@token = PASTE_ACCESS_TOKEN_HERE
+@holdingId = PASTE_HOLDING_UUID_HERE
+@companyId = PASTE_COMPANY_UUID_HERE
+
+### Login: copy accessToken into @token
+POST {{base}}/api/auth/login
+Content-Type: application/json
+
+{"username":"admin","password":"PASTE_FROM_LOCAL_ENV"}
+
+### Who am I
+GET {{base}}/api/auth/me
+Authorization: Bearer {{token}}
+
+### New holding (SYSTEM_ADMIN)
+POST {{base}}/api/holdings
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{"code":"HOLD-A","name":"Example Holding"}
+
+### New company (SYSTEM_ADMIN or holding admin)
+POST {{base}}/api/companies
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{"holdingId":"{{holdingId}}","code":"COMP-A","name":"Example Services","businessType":"SERVICE"}
+
+### New department
+POST {{base}}/api/departments
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{"companyId":"{{companyId}}","code":"FIN","name":"Finance"}
+
+### Category
+POST {{base}}/api/master-data/categories
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{"companyId":"{{companyId}}","code":"SUPPLY","name":"Supplies"}
+
+### Approval request (must be approved by a different COMPANY_ADMIN)
+POST {{base}}/api/workflows/requests
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{"companyId":"{{companyId}}","requestType":"PURCHASE","description":"Review new purchase"}
+
+### Company audit log
+GET {{base}}/api/audit/events?companyId={{companyId}}
+Authorization: Bearer {{token}}
