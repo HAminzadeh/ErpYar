@@ -48,7 +48,7 @@ class LocalEnvironmentTest {
     Files.createDirectories(project.resolve("services/identity"));
     Files.createDirectories(project.resolve("tools/erp-launcher/src"));
     assertTrue(ProjectRoot.valid(project));
-    assertEquals(project, ProjectRoot.find(project.resolve("tools/erp-launcher/src")));
+    assertEquals(project.toRealPath(), ProjectRoot.find(project.resolve("tools/erp-launcher/src")));
   }
 
   @Test void checkIsReadOnly() {
@@ -58,6 +58,11 @@ class LocalEnvironmentTest {
 
   @Test void rejectsInvalidLauncherCombinations() {
     assertThrows(StartupException.class, () -> ErpYarLauncher.Options.parse(new String[] {"--check", "--smoke"}));
-    assertTrue(ErpYarLauncher.Options.parse(new String[] {"--skip-build"}).skipBuild);
+    //assertTrue(ErpYarLauncher.Options.parse(new String[] {"--skip-build"}).skipBuild);
+    assertTrue(
+            ErpYarLauncher.Options
+                    .parse(new String[] {"--skip-build"})
+                    .skipBuildDeprecated
+    );
   }
 }

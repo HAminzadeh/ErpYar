@@ -3,3 +3,4 @@
 *.zip
 .env
 __pycache__
+.local/

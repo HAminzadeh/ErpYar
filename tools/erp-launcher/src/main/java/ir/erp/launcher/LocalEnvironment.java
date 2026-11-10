@@ -50,7 +50,7 @@ public final class LocalEnvironment {
         try {
           Files.writeString(env, content, StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW);
           tryRestrictPermissions(env);
-          System.out.println("[ErpYar] Created .env using cryptographically random credentials.");
+          System.err.println("[ErpYar] Created .env using cryptographically random credentials.");
         } catch (java.nio.file.FileAlreadyExistsException ignored) {
           // Another initializer created it concurrently; inspect without rewriting existing values.
         }
@@ -70,7 +70,7 @@ public final class LocalEnvironment {
         String prefix = raw.length > 0 && raw[raw.length - 1] != '\n' ? "\n" : "";
         Files.writeString(env, prefix + String.join("\n", added) + "\n", StandardCharsets.UTF_8,
             StandardOpenOption.APPEND);
-        System.out.println("[ErpYar] Added " + added.size() + " missing .env keys without changing existing values.");
+        System.err.println("[ErpYar] Added " + added.size() + " missing .env keys without changing existing values.");
       }
       return new LocalEnvironment(validate(parse(env)));
     } catch (IOException e) {

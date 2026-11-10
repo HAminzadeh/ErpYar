@@ -1,107 +1,83 @@
-# ERP Phase 1 — Java 21 / Spring Boot 4
+# ErpYar ERP — Java 21 / Spring Boot 4
 
-Executable **development/MVP foundation** for a holding-aware, multi-company, modular ERP. Six business services plus an API gateway, with **one separate PostgreSQL database per business service** (all on a single PostgreSQL server for local development). Data belongs to individual services; no cross-service joins.
+Holding-aware, multi-company, modular ERP foundation, currently seven Spring Boot applications (`gateway` and six business services), six logical PostgreSQL databases and a standalone Java 21 startup module (`tools/erp-launcher`). The Phase 1 business foundation is **not production complete**.
 
-> This is a functional phase-one skeleton, **not a production-complete ERP**. Read the security and gaps section below before any real deployment.
+## Current developer bootstrap: Smart Bootstrap Phase 01
 
-## Services
+**Docker is reserved for infrastructure only; Spring Boot services run as host JVM processes in the target architecture.** The source still contains a legacy all-application `compose.yaml` for compatibility, but the new launcher **does not execute it as a full stack**. The infrastructure-only Docker image cache and PostgreSQL lifecycle are Phase 02 tasks; customer module registry is Phase 03; selected Java-process startup is Phase 04.
 
-| Module | Purpose | URL via gateway |
+1. Set IntelliJ Project SDK and Maven Runner JRE to Java 21; reload Maven modules.
+2. Run **`ErpYar - Doctor`** to inspect prerequisites without any mutations.
+3. Run **`ErpYar - Prepare Environment`** to create/complete local `.env` without rotating existing secrets.
+4. Run **`ErpYar - Start All`** to see phase-aware status. In Phase 01 it intentionally exits code **3 / `DEFERRED_NOT_READY`**, rather than claiming ERP applications are up.
+
+See [Launcher README](tools/erp-launcher/README.md) and [Persian Doctor / migration guide](docs/operations/phase-01-doctor-and-recovery.md).
+
+### Developer CLI
+
+```powershell
+cd 'D:\ChatGPT_Projects\ErpYar'
+mvn -B -ntp verify
+java -cp tools/erp-launcher/target/classes ir.erp.launcher.ErpYarLauncher --doctor --json
+java -cp tools/erp-launcher/target/classes ir.erp.launcher.ErpYarLauncher --env-only
+java -cp tools/erp-launcher/target/classes ir.erp.launcher.ErpYarLauncher --plan
+```
+
+Maven CLI is optional for running Doctor from IntelliJ, which can use its bundled Maven. The Doctor checks Java 21, Maven, Docker CLI/Compose v2/Linux Engine, Windows WSL, ports, disk/RAM and local environment. An unavailable Docker Engine is reported without downloading or installing privileged software.
+
+## Modules and API routes (when service startup is implemented)
+
+| Runtime module | Purpose | Route |
 |---|---|---|
 | gateway | HTTP reverse proxy | `http://localhost:8080` |
-| identity | Password login, JWT, users, roles, holding/company grants | `/api/auth`, `/api/users` |
+| identity | Password login, JWT, users, roles and holding/company grants | `/api/auth`, `/api/users` |
 | organization | Holdings, companies, departments | `/api/holdings`, `/api/companies`, `/api/departments` |
-| master-data | Per-company categories (extensible) | `/api/master-data/categories` |
-| workflow | Approval submissions and one-step review | `/api/workflows/requests` |
+| master-data | Company-scoped categories | `/api/master-data/categories` |
+| workflow | One-step approval | `/api/workflows/requests` |
 | notification | Per-user in-app notifications | `/api/notifications` |
-| audit | Append-only audit records (application-level) | `/api/audit/events` |
+| audit | Best-effort application audit records | `/api/audit/events` |
 
-## Prerequisites
+The `erp-common` library is not an executable service. The future module-selection policy will support Dedicated and Multi-Tenant deployments, with tenant/holding/company permissions independent of running host processes. This policy is not yet operational in Phase 01.
 
-- Docker Engine and Docker Compose v2 (`docker compose`)
-- Python 3.9+ for generating `.env`
-- Optional: JDK 21 + Maven 3.9+ for local builds
+## Repository layout
 
-## First run
-
-```bash
-cd erp-phase1
-python3 scripts/init_env.py  # Windows: py scripts/init_env.py
-docker compose up -d --build
-docker compose ps
-curl http://localhost:8080/actuator/health  # health is served at gateway
+```text
+ErpYar/
+├── .run/                         # shared IntelliJ Doctor / Env / Plan / Start configs
+├── tools/erp-launcher/           # Java 21 diagnostics/orchestrator
+├── libs/erp-common/              # shared JWT, scopes and API utilities
+├── services/{gateway,identity,organization,master-data,workflow,notification,audit}/
+├── infra/postgres/               # existing DB initialization migrations
+├── compose.yaml                  # legacy all-application Compose; not used for new startup
+├── docs/architecture/adr/0003-host-java-and-infrastructure-only-docker.md
+└── docs/operations/phase-01-doctor-and-recovery.md
 ```
 
-The first Docker build downloads Maven dependencies and may take time. Ports: only **gateway 8080** is published; PostgreSQL and other services are private to the Compose network.
+## Tests
 
-Find generated bootstrap username/password **locally** in `.env` (never commit or send it). Authenticate:
-
-```bash
-curl -sS http://localhost:8080/api/auth/login \
-  -H 'Content-Type: application/json' \
-  -d '{"username":"admin","password":"REPLACE_WITH_ENV_PASSWORD"}'
+```powershell
+mvn -B -ntp verify
+py -m unittest discover -s scripts/tests -p 'test_*.py' -v
 ```
 
-Copy `accessToken` from JSON and use `Authorization: Bearer TOKEN`. Tokens expire in 15 minutes. `docs/api.http` contains runnable requests for IntelliJ REST client / VS Code REST Client.
+The automated Java runtime contract verifies nested project roots, stable `.env`, read-only Doctor and deferred Plan. A healthy gateway alone is insufficient to validate tenant security and full business workflows. The existing `scripts/smoke_test.py` **writes sample database records** and must not run implicitly or against production data.
 
-Example flow: login -> create a holding -> create a company with `businessType` = `SERVICE`/`TRADE`/`MANUFACTURING`/`INVESTMENT`/`OTHER` -> add departments -> create other users -> grant company IDs -> create categories, workflows and notifications.
+## Access and security baseline
 
-## Structure
+- `SYSTEM_ADMIN`, `HOLDING_ADMIN`, `COMPANY_ADMIN`, `STAFF` are existing application-level role concepts. JWT company grants currently govern parts of the MVP; more robust tenant isolation is required before production.
+- Grant changes only take effect in new JWTs until token expiration; cross-service consistency must be addressed in later phases.
+- The audit HTTP publisher is best effort, not tamper-proof compliance evidence.
+- Service authentication, asymmetric key management, MFA, rate limiting, credential rotation, pagination, idempotency and end-to-end tenant authorization need additional work before customer production use.
+- Neither the launcher nor the installer deletes persistent database volumes, runs destructive database SQL, resets Git, or commits/pushes on behalf of the developer.
 
-```
-erp-phase1/
-├── compose.yaml
-├── Dockerfile
-├── pom.xml
-├── docs/api.http
-├── infra/postgres/01-init-databases.sql
-├── libs/erp-common/                 # JWT verification, company-scoping, API errors, audit client
-├── services/
-│   ├── gateway/
-│   ├── identity/
-│   ├── organization/
-│   ├── master-data/
-│   ├── workflow/
-│   ├── notification/
-│   └── audit/
-└── scripts/init_env.py
-```
+## Existing local-only IDE profile
 
-## Development build & test
+Service `application-ide.yml` profiles currently connect to PostgreSQL on `127.0.0.1:${ERP_DB_HOST_PORT:-15432}` and use ports `18000..18006`. The earlier `SQLSTATE 28P01` issue requires verifying the real persisted PostgreSQL password; changing `.env` does not rotate the database role. Phase 02 introduces the infrastructure-specific verified recovery procedure.
 
-```bash
-mvn -B verify       # host must have JDK 21 / Maven
-# or with Docker, without locally installed Maven:
-docker run --rm -v "${PWD}:/src" -w /src maven:3.9-eclipse-temurin-21 mvn -B verify
-```
+## Documentation
 
-On Windows PowerShell use `-v "${PWD}:/src"` in the Docker command. To rebuild services: `docker compose up -d --build`. To stop without erasing data: `docker compose down`. **Destructive** wipe, including all databases: `docker compose down -v`.
-
-## Smoke test (creates local demo records)
-
-After all services are healthy: `python3 scripts/smoke_test.py`. It tests login, holding/company creation, department, master data, workflow four-eyes rule, audit and access-grant endpoints. The test writes records into the local DB.
-
-## Access model
-
-- `SYSTEM_ADMIN`: system-wide administration.
-- `HOLDING_ADMIN`: can manage its granted holding in organization-service; **does not automatically have cross-service company access**.
-- `COMPANY_ADMIN`: can manage assigned companies.
-- `STAFF`: can read/work in explicitly granted companies but cannot perform manager-only operations.
-- Company-specific operations check JWT `company_ids` (except SYSTEM_ADMIN).
-- Every authenticated request must carry its own signed JWT. Client-supplied tenant headers are **never trusted** for authorization.
-- `identity` service is the authority for grants; access changes propagate to new tokens. Previously issued tokens remain valid until expiration (maximum 15 minutes), without revocation.
-- Holding and company ID assignments are administrator managed; **cross-service existence checks for granted IDs are not yet implemented**.
-
-## Security / functional gaps before production
-
-1. **Replace local HMAC JWT and simple password login** with a managed authorization server, asymmetric keys, MFA, session/token revocation, self-service password reset, login rate limiting, and rotation.
-2. **Use service authentication + reliable transactional outbox/event broker** for audit. The current HTTP audit publisher is best-effort and may lose events on failures; audit API permits a JWT-authenticated user with a company grant to submit arbitrary events. It is an MVP event log, **not tamper-proof compliance evidence**.
-3. Add database-level or query-enforced tenancy/RLS across all repositories, not merely controller checks; test each endpoint for IDOR and tenant leakage.
-4. Add schema/DTO separation instead of exposing JPA entities; pagination, request-size rules, idempotency, validation, conflict handling, tests, tracing and dashboards.
-5. Add a configurable multi-step BPM engine, email/SMS delivery, full organization hierarchy, granular permissions and a generic master-data registry in subsequent iterations of phase 1.
-6. Protect backups, secrets, database accounts, TLS and networks; use independent DB users, audited migrations and deployment policy for production.
-
-## Tech references
-
-- Spring Boot 4.0.8: https://spring.io/blog/2026/08/20/spring-boot-4-0-8-available-now/
-- Spring Cloud 2025.1.3: https://spring.io/blog/2026/08/20/spring-cloud-2025-1-3-has-been-released/
+- [Phase 01 Launcher and Doctor](tools/erp-launcher/README.md)
+- [Phase 01 operational checklist](docs/operations/phase-01-doctor-and-recovery.md)
+- [ADR 0003: JVM host vs infrastructure Docker](docs/architecture/adr/0003-host-java-and-infrastructure-only-docker.md)
+- [API examples](docs/api.http)
+- [Baseline quality and technical debt](docs/architecture/technical-debt.md)

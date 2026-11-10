@@ -1,104 +1,83 @@
 package ir.erp.launcher;
 
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-/** IntelliJ entry point: configure the local environment and launch the entire ERP through Compose. */
+/** IntelliJ entry point: Phase 01 doctor/config/plan; subsequent phases supply actual startup. */
 public final class ErpYarLauncher {
   private ErpYarLauncher() { }
 
   public static void main(String[] args) {
     try {
       Options options = Options.parse(args);
-      if (options.help) {
-        printHelp();
-        return;
-      }
+      if (options.help) { printHelp(); return; }
       Path root = ProjectRoot.find(options.repoPath);
-      System.out.println("[ErpYar] Project: " + root);
-      System.out.println("[ErpYar] Java runtime: " + Runtime.version());
-      if (Runtime.version().feature() < 21) {
-        throw new StartupException("Java 21 or newer is required. Set Project SDK to JDK 21 in IntelliJ.");
-      }
-      if (options.checkOnly) {
-        LocalEnvironment.checkWithoutWriting(root);
-        ComposeOrchestrator.checkTools(root, false);
-        System.out.println("[ErpYar] Preflight checks completed; nothing was changed.");
-        return;
-      }
-      LocalEnvironment environment = LocalEnvironment.ensure(root);
-      System.out.println("[ErpYar] Local secrets present; values are intentionally not printed.");
-      if (options.envOnly) {
-        System.out.println("[ErpYar] Local configuration is ready; no containers started.");
-        return;
-      }
-      ComposeOrchestrator orchestrator = new ComposeOrchestrator(root, environment, options);
-      orchestrator.start();
-      if (options.smoke) {
-        orchestrator.runSmokeTest();
-      }
-      System.out.println("[ErpYar] Startup completed successfully. Gateway: http://127.0.0.1:"
-          + environment.gatewayPort());
-    } catch (StartupException e) {
-      System.err.println("[ErpYar] STARTUP FAILED: " + e.getMessage());
-      System.exit(1);
-    } catch (Exception e) {
-      System.err.println("[ErpYar] Unexpected launcher failure (no secrets printed): "
-          + e.getClass().getSimpleName() + ": " + e.getMessage());
-      System.exit(1);
+      StartupOrchestrator.Execution result = new StartupOrchestrator(root, options).execute();
+      System.out.println(options.json ? result.report().toJson() : result.report().toConsole());
+      if (result.exitCode() != 0) System.exit(result.exitCode());
+    } catch (StartupException ex) {
+      System.err.println("[ErpYar] STARTUP FAILED: " + ex.getMessage());
+      System.exit(2);
+    } catch (Exception ex) {
+      // Never print raw ProcessBuilder environment or secret values.
+      System.err.println("[ErpYar] Unexpected failure: " + ex.getClass().getSimpleName());
+      System.exit(2);
     }
   }
 
   static void printHelp() {
-    System.out.println("ErpYar IntelliJ/Docker development launcher (JDK 21)");
-    System.out.println("Options:");
-    System.out.println("  --repo <path>              Override repository root (otherwise locate parent pom.xml)");
-    System.out.println("  --check                    Read-only checks; do not create .env or start Docker");
-    System.out.println("  --env-only                 Create/check .env then stop");
-    System.out.println("  --skip-build               Reuse existing images on startup");
-    System.out.println("  --no-docker-desktop        Do not attempt to start Docker Desktop on Windows");
-    System.out.println("  --smoke                    Run DB-writing smoke test after successful startup");
-    System.out.println("  --help                     Show this help");
+    System.out.println("ErpYar Phase 01 bootstrap / diagnostics (Java 21)");
+    System.out.println("  --repo <path>        Checkout root or an existing nested directory");
+    System.out.println("  --doctor | --check  Read-only diagnostics, no file or Docker changes");
+    System.out.println("  --env-only          Create/validate missing .env keys; preserve existing secrets");
+    System.out.println("  --plan              Read-only phases 02-04 implementation plan (NOT service startup)");
+    System.out.println("  --start             Prepare env; full service startup remains DEFERRED until phase 04");
+    System.out.println("  --no-docker-desktop Do not start installed Docker Desktop in --start mode");
+    System.out.println("  --json              Emit machine-readable diagnostics (no credentials)");
+    System.out.println("  --help              Show options");
+    System.out.println("Exit: 0 diagnostics/plan/config complete, 2 prerequisite/config failure, 3 startup deferred.");
   }
 
   static final class Options {
     Path repoPath;
-    boolean checkOnly;
+    boolean doctor;
     boolean envOnly;
-    boolean skipBuild;
+    boolean plan;
+    boolean start;
     boolean startDockerDesktop = true;
-    boolean smoke;
+    boolean json;
     boolean help;
+    boolean skipBuildDeprecated;
 
+    String mode() { return doctor ? "DOCTOR" : envOnly ? "ENV_ONLY" : plan ? "PLAN" : "START"; }
     static Options parse(String[] args) {
       Options result = new Options();
-      List<String> options = new ArrayList<>(Arrays.asList(args));
-      for (int i = 0; i < options.size(); i++) {
-        String option = options.get(i);
-        switch (option) {
+      List<String> tokens = Arrays.asList(args);
+      for (int i = 0; i < tokens.size(); i++) {
+        String value = tokens.get(i);
+        switch (value) {
           case "--help" -> result.help = true;
-          case "--check" -> result.checkOnly = true;
+          case "--doctor", "--check" -> result.doctor = true;
           case "--env-only" -> result.envOnly = true;
-          case "--skip-build" -> result.skipBuild = true;
+          case "--plan" -> result.plan = true;
+          case "--start" -> result.start = true;
+          case "--json" -> result.json = true;
           case "--no-docker-desktop" -> result.startDockerDesktop = false;
-          case "--smoke" -> result.smoke = true;
+          case "--skip-build" -> result.skipBuildDeprecated = true; // old CLI, no Java Docker builds.
+          case "--smoke" -> throw new StartupException("--smoke is unavailable until Phase 05 and is never implicit.");
           case "--repo" -> {
-            if (i + 1 >= options.size()) {
-              throw new StartupException("--repo expects an absolute or relative folder path");
-            }
-            result.repoPath = Path.of(options.get(++i));
+            if (i + 1 >= tokens.size() || tokens.get(i + 1).startsWith("--"))
+              throw new StartupException("--repo expects an existing directory path");
+            result.repoPath = Path.of(tokens.get(++i));
           }
-          default -> throw new StartupException("Unknown option: " + option + ". Use --help.");
+          default -> throw new StartupException("Unknown option " + value + "; run --help");
         }
       }
-      if (result.checkOnly && (result.envOnly || result.smoke)) {
-        throw new StartupException("--check cannot be combined with --env-only or --smoke");
-      }
-      if (result.envOnly && result.smoke) {
-        throw new StartupException("--env-only and --smoke are mutually exclusive");
-      }
+      int count = (result.doctor ? 1 : 0) + (result.envOnly ? 1 : 0)
+          + (result.plan ? 1 : 0) + (result.start ? 1 : 0);
+      if (count > 1) throw new StartupException("Choose only one of --doctor, --plan, --env-only or --start");
+      if (count == 0 && !result.help) result.start = true;
       return result;
     }
   }
