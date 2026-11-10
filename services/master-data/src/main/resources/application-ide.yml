@@ -1,0 +1,8 @@
+server:
+  port: ${ERP_IDE_MASTER_DATA_PORT:18003}
+spring:
+  datasource:
+    url: jdbc:postgresql://127.0.0.1:${ERP_DB_HOST_PORT:15432}/master_data_db
+erp:
+  audit:
+    url: http://127.0.0.1:${ERP_IDE_AUDIT_PORT:18006}

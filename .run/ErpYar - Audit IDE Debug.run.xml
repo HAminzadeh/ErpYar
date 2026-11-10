@@ -1,0 +1,13 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="ErpYar - Audit IDE Debug" type="Application" factoryName="Application">
+    <option name="MAIN_CLASS_NAME" value="ir.erp.audit.AuditApplication" />
+    <module name="audit" />
+    <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+    <envs>
+      <env name="SPRING_PROFILES_ACTIVE" value="ide" />
+    </envs>
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>

@@ -16,6 +16,8 @@ services:
       POSTGRES_USER: erp
       POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
       POSTGRES_DB: postgres
+    ports:
+      - "127.0.0.1:${ERP_DB_HOST_PORT:-15432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./infra/postgres/01-init-databases.sql:/docker-entrypoint-initdb.d/01-init-databases.sql:ro

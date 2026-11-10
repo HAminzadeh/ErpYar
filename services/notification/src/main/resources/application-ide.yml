@@ -1,0 +1,8 @@
+server:
+  port: ${ERP_IDE_NOTIFICATION_PORT:18005}
+spring:
+  datasource:
+    url: jdbc:postgresql://127.0.0.1:${ERP_DB_HOST_PORT:15432}/notification_db
+erp:
+  audit:
+    url: http://127.0.0.1:${ERP_IDE_AUDIT_PORT:18006}
