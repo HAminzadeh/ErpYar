@@ -12,8 +12,10 @@ processes. Do **not** use `docker compose down -v`.
 
 ## IntelliJ run and command-line operations
 
-Use JDK 21 and reload Maven. Run `ir.erp.launcher.ErpYarLauncher` from module `erp-launcher`
-with working directory `$PROJECT_DIR$` or use the shared `.run` configurations.
+**Phase 02.1:** there is exactly one shared IntelliJ configuration, `ErpYar - Run`.
+It calls `ir.erp.launcher.ErpYarLauncher` in `erp-launcher` with `$PROJECT_DIR$` working directory.
+All diagnostic, cache and infrastructure-only operations are flags of that same class; they
+are not separate shared Run configurations. See `docs/operations/phase-02-1-single-entry.md`.
 After building the launcher, these commands work from the repository root:
 
 ```powershell

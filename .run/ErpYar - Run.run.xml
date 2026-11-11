@@ -1,0 +1,14 @@
+<component name="ProjectRunConfigurationManager">
+  <!-- Phase 02.1: the sole shared IntelliJ entry point for ordinary ERP startup.
+       Individual service main classes and command-line diagnostic flags remain available,
+       but they are intentionally NOT shipped as extra shared Run configurations. -->
+  <configuration default="false" name="ErpYar - Run" type="Application" factoryName="Application">
+    <option name="MAIN_CLASS_NAME" value="ir.erp.launcher.ErpYarLauncher" />
+    <module name="erp-launcher" />
+    <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+    <option name="PROGRAM_PARAMETERS" value="--start" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>

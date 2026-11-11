@@ -2,18 +2,29 @@
 
 Holding-aware, multi-company, modular ERP foundation, currently seven Spring Boot applications (`gateway` and six business services), six logical PostgreSQL databases and a standalone Java 21 startup module (`tools/erp-launcher`). The Phase 1 business foundation is **not production complete**.
 
-## Current developer bootstrap: Smart Bootstrap Phase 02
+## Single permanent IntelliJ entry point — Phase 02.1
 
-**Docker is reserved for infrastructure only; Spring Boot services run as host JVM processes in the target architecture.** The source still contains a legacy all-application `compose.yaml` for compatibility, but the new launcher **does not execute it as a full stack**. The infrastructure-only Docker image cache and PostgreSQL lifecycle are available in Phase 02; customer module registry is Phase 03; selected Java-process startup is Phase 04.
+**Use only the shared Run Configuration `ErpYar - Run`.** Main class:
+`ir.erp.launcher.ErpYarLauncher` (module `erp-launcher`), working directory `$PROJECT_DIR$`,
+Java 21, program argument `--start`. Do not start ordinary ERP development from
+`AuditApplication`, `AccountingApplication` or the old Docker all-services Compose.
 
-1. Set IntelliJ Project SDK and Maven Runner JRE to Java 21; reload Maven modules.
-2. Run **`ErpYar - Doctor`** to inspect prerequisites without any mutations.
-3. Run **`ErpYar - Prepare Environment`** to create/complete local `.env` without rotating existing secrets.
-4. Run **`ErpYar - Start Infrastructure`** to start only PostgreSQL and verify all required databases.
-5. Run **`ErpYar - Export Image Cache`** to preserve the real PostgreSQL image for another machine (or use the automatic first-run export).
-6. **`ErpYar - Start All`** still exits code **3 / `DEFERRED_NOT_READY`** until Phase 04; it does not claim that Java ERP applications are running.
+- `ErpYar - Run` automatically runs preflight checks, preserves or creates `.env`,
+  restores/pulls/caches the approved PostgreSQL infrastructure image when necessary,
+  and starts/validates PostgreSQL and the six logical databases using the
+  **infrastructure-only** `infra/compose.infrastructure.yml`.
+- This remains a Phase 02.1 *partial* boot: service module selection arrives in Phase 03,
+  and selected host-JVM service execution arrives in Phase 04. Until Phase 04,
+  `--start` must exit code **3** / `DEFERRED_NOT_READY`, not falsely claim ERP READY.
+- `--doctor`, `--plan`, `--env-only`, `--cache-export`, `--cache-import`,
+  `--infra-only` and `--offline` remain **CLI flags on the same main class**, not separate
+  shared IntelliJ configurations. You do not need to run them separately for
+  the ordinary online start path.
+- Docker runs *only* infrastructure; Spring Boot services are host JVM processes in
+  the target architecture. The legacy `compose.yaml` is retained but not run by
+  the new launcher. Never delete database volumes to fix a password mismatch.
 
-See [Launcher README](tools/erp-launcher/README.md) and [Persian Doctor / migration guide](docs/operations/phase-01-doctor-and-recovery.md).
+See [the unified-entry migration and IDE guide](docs/operations/phase-02-1-single-entry.md).
 
 ### Developer CLI
 
@@ -39,13 +50,13 @@ Maven CLI is optional for running Doctor from IntelliJ, which can use its bundle
 | notification | Per-user in-app notifications | `/api/notifications` |
 | audit | Best-effort application audit records | `/api/audit/events` |
 
-The `erp-common` library is not an executable service. The future module-selection policy will support Dedicated and Multi-Tenant deployments, with tenant/holding/company permissions independent of running host processes. This policy is not yet operational in Phase 01.
+The `erp-common` library is not an executable service. The future module-selection policy will support Dedicated and Multi-Tenant deployments, with tenant/holding/company permissions independent of running host processes. The customer-specific module-selection policy is planned for Phase 03; selected host-JVM service startup is planned for Phase 04.
 
 ## Repository layout
 
 ```text
 ErpYar/
-├── .run/                         # shared IntelliJ Doctor / Env / Plan / Start configs
+├── .run/                         # sole shared IntelliJ ErpYar - Run configuration
 ├── tools/erp-launcher/           # Java 21 diagnostics/orchestrator
 ├── libs/erp-common/              # shared JWT, scopes and API utilities
 ├── services/{gateway,identity,organization,master-data,workflow,notification,audit}/
@@ -88,8 +99,9 @@ Service `application-ide.yml` profiles currently connect to PostgreSQL on `127.0
 
 The new development architecture runs **all Java ERP modules as host JVMs**, not Docker
 containers. The legacy root `compose.yaml` describes the old stack for reference only.
-Start PostgreSQL alone from IntelliJ with **ErpYar - Start Infrastructure**, or run
-`ir.erp.launcher.ErpYarLauncher --infra-only` (Java 21, module `erp-launcher`).
+The single shared IntelliJ configuration **ErpYar - Run** invokes the launcher.
+For standalone troubleshooting, call `ir.erp.launcher.ErpYarLauncher --infra-only`
+from the CLI (Java 21, module `erp-launcher`).
 The first run exports the actual local `postgres:16-alpine` image to
 `.local/docker-images/` with a SHA-256 content-integrity lock (not a digital signature). The image
 is reused on subsequent runs; `--offline` forbids registry pulls.

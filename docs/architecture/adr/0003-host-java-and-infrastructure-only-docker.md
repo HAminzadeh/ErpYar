@@ -1,5 +1,7 @@
 # ADR 0003 — Host JVM processes; Docker reserved for infrastructure
 
+> **Update (Phase 02.1):** The historical Run preset mentioned below was retired. See [ADR 0005](0005-unified-intellij-entrypoint.md) for the current *single shared* IntelliJ configuration. The host-JVM/infrastructure-Docker architectural decision remains valid.
+
 Status: **Accepted (Phase 01 contract)**
 
 ## Context

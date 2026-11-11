@@ -1,66 +1,57 @@
-# ErpYar Phase 01 — Java 21 Development Launcher
+# ErpYar Unified Launcher — Phase 02.1
 
-این ماژول نقطه ورود مرکزی IntelliJ است. فاز ۱ فقط **پیش‌نیازها، تنظیمات و قراردادهای توسعه** را پیاده می‌کند؛ اجرای واقعی زیرساخت در فاز ۲ و انتخاب/اجرای ماژول‌ها در فازهای ۳ و ۴ اضافه می‌شود.
+**تنها نقطه ورود رسمی IntelliJ:** `ErpYar - Run` → `ir.erp.launcher.ErpYarLauncher`.
+در `.run/` فقط همین یک Run Configuration اشتراکی نگهداری می‌شود.
 
-## IntelliJ (Windows)
+## روش اجرای روزمره
 
-1. Project SDK و Maven Runner JRE را روی **Java 21** قرار دهید و `Reload All Maven Projects` بزنید.
-2. Run Configuration **`ErpYar - Doctor`** را اجرا کنید: هیچ فایل یا Docker container ایجاد/تغییر نمی‌کند.
-3. **`ErpYar - Prepare Environment`** را فقط یک بار برای ساخت `.env` در صورت نیاز اجرا کنید. اجرای مجدد آن مقادیر Secret را تغییر نمی‌دهد.
-4. **`ErpYar - Start All`** در فاز ۱ فقط بررسی می‌کند و با وضعیت **DEFERRED_NOT_READY** (کد خروج ۳) پایان می‌یابد؛ عمداً هفت سرویس را اجرا نمی‌کند. پس از اجرای فاز ۴ این Run Configuration فعال خواهد شد.
-5. کانفیگ قبلی **`ErpYar - Start All Services (legacy preview)`** فقط `--plan` را اجرا می‌کند؛ راه‌اندازی Docker تمام ماژول‌ها منسوخ شده است.
+1. در IntelliJ، SDK و Maven Runner JRE را روی **Java 21** قرار دهید و Maven Reload انجام دهید.
+2. از نوار Run فقط **`ErpYar - Run`** را انتخاب کنید؛ Working directory برابر `$PROJECT_DIR$` است.
+3. Launcher خودش پیش‌نیازها را تشخیص می‌دهد؛ `.env` را بدون تغییر رمزهای فعلی تکمیل می‌کند؛
+   Image رسمی زیرساخت PostgreSQL را در Docker/کش محلی بررسی می‌کند، از کش بازیابی می‌کند
+   یا در صورت نیاز آنلاین دریافت و در `.local/docker-images/` ذخیره می‌کند؛ سپس PostgreSQL
+   و دیتابیس‌های منطقی غایب را کنترل می‌کند.
+4. تا تکمیل فاز ۰۴، اجرای JVM سرویس‌های ERP **عمداً انجام نمی‌شود** و خروجی صحیح
+   `DEFERRED_NOT_READY` / کد خروج ۳ است. این به معنی خرابی زیرساخت نیست؛ به معنی
+   آماده نبودن اجرای نهایی ERP در دامنه فعلی توسعه است.
 
-## CLI
+برای جلوگیری از سردرگمی، کانفیگ‌های اشتراکی قدیمی Doctor، Prepare، Start Infrastructure،
+Export، Offline و Audit Debug حذف شده‌اند؛ **قابلیت‌های آن‌ها از کد حذف نشده‌اند**.
+فایل‌های شخصی `.idea/workspace.xml` یا Run Configurationهای محلی ممکن است هنوز آن
+نام‌ها را نمایش دهند. از `Run > Edit Configurations` فقط موارد شخصی اضافی را با بررسی دستی حذف کنید.
+نصب‌کننده سورس، فایل‌های شخصی IDE را دستکاری نمی‌کند.
 
-در Windows پس از ساخت Maven (از IntelliJ یا `mvn -B -ntp verify`):
+## عیب‌یابی و کارهای تخصصی (همان Main Class، بدون Run Configuration دوم)
+
+بعد از ساخت ماژول `erp-launcher`، از ریشه پروژه:
 
 ```powershell
-cd 'D:\ChatGPT_Projects\ErpYar'
-java -cp tools/erp-launcher/target/classes ir.erp.launcher.ErpYarLauncher --doctor
-java -cp tools/erp-launcher/target/classes ir.erp.launcher.ErpYarLauncher --doctor --json
-java -cp tools/erp-launcher/target/classes ir.erp.launcher.ErpYarLauncher --plan
-java -cp tools/erp-launcher/target/classes ir.erp.launcher.ErpYarLauncher --env-only
-java -cp tools/erp-launcher/target/classes ir.erp.launcher.ErpYarLauncher --start
+Set-Location 'D:\ChatGPT_Projects\ErpYar'
+$main = 'ir.erp.launcher.ErpYarLauncher'
+$cp = 'tools/erp-launcher/target/classes'
+java -cp $cp $main --doctor --json         # بررسی فقط‌خواندنی
+java -cp $cp $main --plan                  # برنامه مراحل آینده
+java -cp $cp $main --env-only              # فقط .env
+java -cp $cp $main --infra-only            # فقط PostgreSQL
+java -cp $cp $main --cache-export          # صدور TAR PostgreSQL موجود
+java -cp $cp $main --cache-import --offline # بازیابی آفلاین از TAR
+java -cp $cp $main --start --offline       # Bootstrap آفلاین
 ```
 
-مسیر اصلی یا هر زیرپوشه موجود را می‌توان با `--repo "D:\ChatGPT_Projects\ErpYar\tools\erp-launcher\src"` معرفی کرد. لینک نمادین به مسیر خارج مخزن، مسیر غیرموجود و ریشه غیرمعتبر رد می‌شود. `--json` بدون مقادیر رمز، خروجی ساختاریافته با نام مرحله، مدت، وضعیت، اقدام پیشنهادی و Exit Code می‌دهد.
+`--doctor` و `--plan` هیچ فایل یا Container را تغییر نمی‌دهند. `--offline` هیچ Pull اینترنتی
+نمی‌زند و در نبود Image/Cache با خطای شفاف متوقف می‌شود. TAR واقعی فقط روی سیستم دارای
+Docker ساخته می‌شود. هیچ Image مربوط به سرویس Java ذخیره یا اجرا نمی‌شود.
 
-| وضعیت | کد خروج | معنی |
-|---|---:|---|
-| Doctor/Plan/Env بدون خطای مسدودکننده | 0 | فقط بررسی یا ساخت تنظیمات تکمیل شد؛ **نه** اجرای ERP |
-| پیش‌نیاز یا تنظیمات نامعتبر | 2 | مشکل باید اصلاح شود |
-| Start در فاز ۱ | 3 | به دلیل ناتمام بودن فازهای ۲ تا ۴، برنامه هنوز READY نیست |
-
-`--doctor`، `--check` و `--plan` همه **read-only** هستند؛ Docker Desktop را نیز اجرا نمی‌کنند. `--env-only` فقط `.env` را می‌سازد یا تکمیل می‌کند. `--start` می‌تواند Docker Desktop نصب‌شده را در Windows اجرا کند اما هیچ ERP Java container را اجرا نمی‌کند. `--smoke` تا تکمیل فاز ۵ غیرفعال است تا داده آزمایشی ناخواسته ساخته نشود.
-
-## خطای ثبت‌شده: `ProjectRoot.find` و PostgreSQL 28P01
-
-- تست قدیمی `findsProjectRootFromNestedModule` اکنون باید مسیر والد معتبر را برگرداند؛ هیچ الزامی نیست حتماً `--repo` به ریشه اشاره کند.
-- خطای `password authentication failed for user erp` با حذف Volume یا تغییر مخفیانه رمز رفع نمی‌شود. دیتابیس فعلی با آدرس `127.0.0.1:${ERP_DB_HOST_PORT:-15432}` در پروفایل `ide` تعریف شده؛ بررسی اتصال واقعی و بازیابی کنترل‌شده به فاز ۲ تعلق دارد.
-- `.env` به Git اضافه نشود. فایل‌های Application IDE قبلی حفظ شده‌اند و پورت‌های ۱۸۰۰۰ تا ۱۸۰۰۶ برای سرویس‌های محلی از قبل رزرو شده‌اند.
-
-## تست و محدودیت‌ها
+## تست و ایمنی
 
 ```powershell
 mvn -B -ntp verify
 py -m unittest discover -s scripts/tests -p 'test_*.py' -v
 ```
 
-Doctor تفاوت کمبود Maven CLI با تنظیم IntelliJ bundled Maven را گزارش می‌کند؛ وجود Parent POM در Cache را با تأیید کامل dependencyها اشتباه نمی‌گیرد. اگر `~/.m2/settings.xml` دارای Mirror داخلی باشد و Maven شکست بخورد، وضعیت Nexus را جدا از خطاهای Compile بررسی کنید. پشتیبانی از دانلود آفلاین Imageها، provisioning DB و آغاز واقعی ماژول‌های انتخابی در فازهای بعد خواهد بود.
+بدون `docker compose down -v`، بازنشانی رمز PostgreSQL، Git reset، Commit یا Push خودکار.
+مدیریت ماژول مشتری (Phase 03)، اجرای سرویس‌های منتخب JVM (Phase 04) و سلامت کامل سیستم
+(Phase 05) هنوز در محدوده مراحل بعدی هستند.
 
-## ایمنی
-
-هیچ دستور `docker compose up -d --build` برای سرویس‌های Java، `down -v`، `DROP DATABASE`، `git reset`, `git clean`, تغییر خودکار رمز، نصب سراسری بدون تأیید یا Commit/Push خودکار در مسیر این Launcher وجود ندارد. این ماژول Production Provisioner نیست.
-
-
-## فاز ۲ — زیرساخت آماده و کش آفلاین
-
-اجرای `ErpYar - Start Infrastructure` یا `--infra-only` فقط PostgreSQL را در Docker
-راه‌اندازی می‌کند و احراز هویت TCP و شش دیتابیس را بررسی می‌کند.
-اجرای `--cache-export` آرشیو Image موجود را در `.local/docker-images/` ذخیره می‌کند؛
-`--cache-import --offline` آن را بدون دانلود از اینترنت روی Docker مقصد بازیابی می‌کند.
-با `--infra-only --offline` تنها کش محلی و Imageهای موجود استفاده می‌شوند.
-
-مستند کامل: `docs/operations/phase-02-offline-infrastructure.md`.
-`--start` همچنان تا تکمیل فاز ۴ گزارش DEFERRED_NOT_READY می‌دهد و سرویس Java
-را نه در Docker و نه در JVM اجرا نمی‌کند.
+راهنمای تکمیلی: `docs/operations/phase-02-1-single-entry.md` و
+`docs/operations/phase-02-offline-infrastructure.md`.

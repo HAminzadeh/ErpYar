@@ -28,11 +28,16 @@ class StartupContractTest(unittest.TestCase):
                 self.assertIn('127.0.0.1:${ERP_DB_HOST_PORT:15432}', ide)
 
     def test_idea_run_configuration_uses_launcher(self):
-        path = ROOT / '.run/ErpYar - Start All Services.run.xml'
+        path = ROOT / '.run/ErpYar - Run.run.xml'
         doc = ET.parse(path)
         self.assertTrue(any(node.get('value') == 'ir.erp.launcher.ErpYarLauncher'
                             for node in doc.findall('.//option')))
         self.assertTrue(any(node.get('value') == '$PROJECT_DIR$'
+                            for node in doc.findall('.//option')))
+        configs = list((ROOT / '.run').glob('*.run.xml'))
+        self.assertEqual([p.name for p in configs], ['ErpYar - Run.run.xml'])
+        self.assertEqual(doc.find('.//configuration').get('name'), 'ErpYar - Run')
+        self.assertTrue(any(node.get('value') == '--start'
                             for node in doc.findall('.//option')))
 
 

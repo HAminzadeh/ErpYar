@@ -4,7 +4,12 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
 
-/** Java 21 entry point: infrastructure-only Docker, Java service startup follows in Phase 04. */
+/**
+ * Sole supported IntelliJ entry point for ErpYar.
+ * One normal Run invokes prerequisite checks and infrastructure preparation; selected
+ * host-JVM services remain deliberately deferred until Phase 04 is implemented.
+ * Diagnostic and cache operations are CLI modes of THIS class, not extra IDE entry points.
+ */
 public final class ErpYarLauncher {
   private ErpYarLauncher() { }
   public static void main(String[] args) {
@@ -24,7 +29,9 @@ public final class ErpYarLauncher {
     }
   }
   static void printHelp() {
-    System.out.println("ErpYar Phase 02 infrastructure bootstrap (Java 21)");
+    System.out.println("ErpYar - Run | unified Java 21 entry point (Phase 02.1)");
+    System.out.println("IntelliJ: choose the single shared configuration 'ErpYar - Run'.");
+    System.out.println("Default/--start: prepare only infrastructure; host JVM service startup is deferred to Phase 04.");
     System.out.println("  --repo <path>          Checkout root or existing nested directory");
     System.out.println("  --doctor | --check    Read-only preflight; no files/containers altered");
     System.out.println("  --env-only            Create/validate .env without changing existing values");
@@ -73,6 +80,7 @@ public final class ErpYarLauncher {
       int count=(result.doctor?1:0)+(result.envOnly?1:0)+(result.plan?1:0)+(result.start?1:0)
           +(result.infraOnly?1:0)+(result.cacheExport?1:0)+(result.cacheImport?1:0);
       if(count>1)throw new StartupException("Select exactly one of doctor/plan/env-only/infra-only/cache-export/cache-import/start");
+      // No special IntelliJ mode is needed: pressing Run uses this canonical path.
       if(count==0 && !result.help)result.start=true;
       return result;
     }
