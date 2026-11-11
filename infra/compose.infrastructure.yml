@@ -1,0 +1,24 @@
+# ErpYar Phase 02: ONLY infrastructure runs in Docker. Never add Java ERP services here.
+# Keep original Compose project name so existing erp-phase1_postgres_data is preserved.
+name: erp-phase1
+services:
+  postgres:
+    image: postgres:16-alpine
+    pull_policy: never
+    environment:
+      POSTGRES_USER: erp
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
+      POSTGRES_DB: postgres
+    ports:
+      - "127.0.0.1:${ERP_DB_HOST_PORT:-15432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ../infra/postgres/01-init-databases.sql:/docker-entrypoint-initdb.d/01-init-databases.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U erp -d postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+volumes:
+  postgres_data:

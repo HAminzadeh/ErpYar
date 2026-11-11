@@ -1,0 +1,9 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="ErpYar - Offline Infrastructure" type="Application" factoryName="Application">
+    <option name="MAIN_CLASS_NAME" value="ir.erp.launcher.ErpYarLauncher" />
+    <module name="erp-launcher" />
+    <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+    <option name="PROGRAM_PARAMETERS" value="--infra-only --offline" />
+    <method v="2"><option name="Make" enabled="true" /></method>
+  </configuration>
+</component>

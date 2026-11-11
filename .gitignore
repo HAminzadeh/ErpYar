@@ -4,3 +4,6 @@
 .vscode/
 .DS_Store
 .local/
+
+# Phase 02 binary image cache (portable, intentionally NOT stored in Git)
+/.local/

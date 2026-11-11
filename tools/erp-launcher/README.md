@@ -51,3 +51,16 @@ Doctor تفاوت کمبود Maven CLI با تنظیم IntelliJ bundled Maven ر
 ## ایمنی
 
 هیچ دستور `docker compose up -d --build` برای سرویس‌های Java، `down -v`، `DROP DATABASE`، `git reset`, `git clean`, تغییر خودکار رمز، نصب سراسری بدون تأیید یا Commit/Push خودکار در مسیر این Launcher وجود ندارد. این ماژول Production Provisioner نیست.
+
+
+## فاز ۲ — زیرساخت آماده و کش آفلاین
+
+اجرای `ErpYar - Start Infrastructure` یا `--infra-only` فقط PostgreSQL را در Docker
+راه‌اندازی می‌کند و احراز هویت TCP و شش دیتابیس را بررسی می‌کند.
+اجرای `--cache-export` آرشیو Image موجود را در `.local/docker-images/` ذخیره می‌کند؛
+`--cache-import --offline` آن را بدون دانلود از اینترنت روی Docker مقصد بازیابی می‌کند.
+با `--infra-only --offline` تنها کش محلی و Imageهای موجود استفاده می‌شوند.
+
+مستند کامل: `docs/operations/phase-02-offline-infrastructure.md`.
+`--start` همچنان تا تکمیل فاز ۴ گزارش DEFERRED_NOT_READY می‌دهد و سرویس Java
+را نه در Docker و نه در JVM اجرا نمی‌کند.

@@ -1,16 +1,28 @@
 package ir.erp.launcher;
 
+import java.nio.file.Path;
 import java.util.List;
 
-/** Explicit phase boundary; prevents accidentally starting Java ERP containers. */
+/** Phase 02 concrete infrastructure-only bootstrap; independent of Java ERP processes. */
 final class InfrastructureManager implements InfrastructureBootstrap {
+  private final Path root;
+  private final LocalEnvironment environment;
+  private final DockerClient docker;
+  private final boolean offline;
+  InfrastructureManager(Path root,LocalEnvironment env,boolean offline) {
+    this(root,env,new DockerProcessClient(root,env.secrets()),offline);
+  }
+  InfrastructureManager(Path root,LocalEnvironment env,DockerClient docker,boolean offline) {
+    this.root=root;this.environment=env;this.docker=docker;this.offline=offline;
+  }
   @Override public Preparation describe() {
-    return new Preparation(false, List.of("postgres:16-alpine"),
-        "Phase 02 will manage PostgreSQL as infrastructure-only Docker Compose, image cache and authentication. "
-        + "No ERP Java service is allowed inside Docker.");
+    return new Preparation(true,List.of(ImageVersionPolicy.POSTGRES),
+        "Phase 02: PostgreSQL 16 infrastructure only. Docker image cache and database provisioning implemented. "
+        + "Selected Java service startup remains Phase 04.");
   }
   @Override public void startInfrastructure() {
-    throw new StartupException("Infrastructure bootstrap is reserved for Phase 02. "
-        + "Phase 01 will not run the legacy all-services Docker Compose.");
+    DockerImageCacheManager cache=new DockerImageCacheManager(root,docker);
+    cache.ensureAvailable(offline);
+    new PostgresInfrastructureManager(root,environment,docker).start();
   }
 }

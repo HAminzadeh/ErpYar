@@ -49,7 +49,7 @@ class BootstrapPhase01Test {
     var result = new StartupOrchestrator(root,
         ErpYarLauncher.Options.parse(new String[] {"--plan"})).execute();
     assertTrue(result.report().checks().stream().anyMatch(c ->
-        c.stage() == StartupReport.Stage.INFRA_PREP && c.result() == StartupReport.Result.DEFERRED));
+        c.stage() == StartupReport.Stage.INFRA_PREP && c.result() == StartupReport.Result.PASS));
     assertTrue(result.report().checks().stream().anyMatch(c ->
         c.stage() == StartupReport.Stage.SERVICE_PLAN && c.result() == StartupReport.Result.DEFERRED));
     assertFalse(Files.exists(root.resolve(".env")));
@@ -60,7 +60,8 @@ class BootstrapPhase01Test {
     var old = new ComposeOrchestrator(root, null, ErpYarLauncher.Options.parse(new String[0]));
     assertThrows(StartupException.class, old::start);
     assertThrows(StartupException.class, old::runSmokeTest);
-    assertThrows(StartupException.class, () -> new InfrastructureManager().startInfrastructure());
+    assertEquals(List.of("postgres:16-alpine"),
+        new InfrastructureManager(root, LocalEnvironment.ensure(root), true).describe().requiredImages());
     assertThrows(StartupException.class, () -> new JavaServiceRuntime().startSelected(List.of("gateway")));
   }
 

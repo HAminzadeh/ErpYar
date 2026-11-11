@@ -2,14 +2,16 @@
 
 Holding-aware, multi-company, modular ERP foundation, currently seven Spring Boot applications (`gateway` and six business services), six logical PostgreSQL databases and a standalone Java 21 startup module (`tools/erp-launcher`). The Phase 1 business foundation is **not production complete**.
 
-## Current developer bootstrap: Smart Bootstrap Phase 01
+## Current developer bootstrap: Smart Bootstrap Phase 02
 
-**Docker is reserved for infrastructure only; Spring Boot services run as host JVM processes in the target architecture.** The source still contains a legacy all-application `compose.yaml` for compatibility, but the new launcher **does not execute it as a full stack**. The infrastructure-only Docker image cache and PostgreSQL lifecycle are Phase 02 tasks; customer module registry is Phase 03; selected Java-process startup is Phase 04.
+**Docker is reserved for infrastructure only; Spring Boot services run as host JVM processes in the target architecture.** The source still contains a legacy all-application `compose.yaml` for compatibility, but the new launcher **does not execute it as a full stack**. The infrastructure-only Docker image cache and PostgreSQL lifecycle are available in Phase 02; customer module registry is Phase 03; selected Java-process startup is Phase 04.
 
 1. Set IntelliJ Project SDK and Maven Runner JRE to Java 21; reload Maven modules.
 2. Run **`ErpYar - Doctor`** to inspect prerequisites without any mutations.
 3. Run **`ErpYar - Prepare Environment`** to create/complete local `.env` without rotating existing secrets.
-4. Run **`ErpYar - Start All`** to see phase-aware status. In Phase 01 it intentionally exits code **3 / `DEFERRED_NOT_READY`**, rather than claiming ERP applications are up.
+4. Run **`ErpYar - Start Infrastructure`** to start only PostgreSQL and verify all required databases.
+5. Run **`ErpYar - Export Image Cache`** to preserve the real PostgreSQL image for another machine (or use the automatic first-run export).
+6. **`ErpYar - Start All`** still exits code **3 / `DEFERRED_NOT_READY`** until Phase 04; it does not claim that Java ERP applications are running.
 
 See [Launcher README](tools/erp-launcher/README.md) and [Persian Doctor / migration guide](docs/operations/phase-01-doctor-and-recovery.md).
 
@@ -72,7 +74,7 @@ The automated Java runtime contract verifies nested project roots, stable `.env`
 
 ## Existing local-only IDE profile
 
-Service `application-ide.yml` profiles currently connect to PostgreSQL on `127.0.0.1:${ERP_DB_HOST_PORT:-15432}` and use ports `18000..18006`. The earlier `SQLSTATE 28P01` issue requires verifying the real persisted PostgreSQL password; changing `.env` does not rotate the database role. Phase 02 introduces the infrastructure-specific verified recovery procedure.
+Service `application-ide.yml` profiles currently connect to PostgreSQL on `127.0.0.1:${ERP_DB_HOST_PORT:-15432}` and use ports `18000..18006`. The earlier `SQLSTATE 28P01` issue requires verifying the real persisted PostgreSQL password; changing `.env` does not rotate the database role. Phase 02 includes the infrastructure-specific verified diagnostic and recovery procedure.
 
 ## Documentation
 
@@ -81,3 +83,22 @@ Service `application-ide.yml` profiles currently connect to PostgreSQL on `127.0
 - [ADR 0003: JVM host vs infrastructure Docker](docs/architecture/adr/0003-host-java-and-infrastructure-only-docker.md)
 - [API examples](docs/api.http)
 - [Baseline quality and technical debt](docs/architecture/technical-debt.md)
+
+## Phase 02 — infrastructure only and offline-first image cache
+
+The new development architecture runs **all Java ERP modules as host JVMs**, not Docker
+containers. The legacy root `compose.yaml` describes the old stack for reference only.
+Start PostgreSQL alone from IntelliJ with **ErpYar - Start Infrastructure**, or run
+`ir.erp.launcher.ErpYarLauncher --infra-only` (Java 21, module `erp-launcher`).
+The first run exports the actual local `postgres:16-alpine` image to
+`.local/docker-images/` with a SHA-256 content-integrity lock (not a digital signature). The image
+is reused on subsequent runs; `--offline` forbids registry pulls.
+To move the verified cache to another Linux-container Docker host, copy the entire
+`.local/docker-images/` directory or package it using
+`scripts/Pack-ErpYar-Docker-Cache.ps1` and run `--cache-import --offline` there.
+The Docker infrastructure Compose file is `infra/compose.infrastructure.yml`, preserving
+original `erp-phase1_postgres_data`. An existing volume is never wiped or passwords rotated.
+
+Read [Phase 02 operational guide](docs/operations/phase-02-offline-infrastructure.md) for
+flags, version/platform checks, PostgreSQL `28P01` recovery, Flyway and offline limitations.
+**The Java service auto-start remains intentionally deferred until Phase 04.**
